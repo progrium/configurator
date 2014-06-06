@@ -1,0 +1,19 @@
+#!/bin/bash
+
+main() {
+	set -eo pipefail
+	local tests_dir="$(dirname "$BASH_SOURCE")"
+	local transformers="$(ls "$tests_dir/.." | grep -v tests)"
+	for transformer in $transformers; do
+		local expected="$(cat $tests_dir/$transformer.expected)"
+		local output="$(cat $tests_dir/$transformer.json | $tests_dir/../$transformer)"
+		if [[ "$expected" == "$output" ]]; then
+			echo "$transformer: PASS"
+		else
+			echo "$transformer: FAIL"
+			exit 2
+		fi
+	done
+}
+
+main

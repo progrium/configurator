@@ -1,0 +1,27 @@
+#!/usr/bin/ruby
+require "rubygems"
+require "json"
+
+## An incomplete but totally usable transformer for TOML
+## TODO: nested tables, date support?
+
+def jsonize(obj)
+	# Ruby JSON is picky about producing JSON for literals
+	JSON.dump([obj])[1...-1]
+end
+
+def transform(obj)
+	if obj.is_a? Hash
+		obj.collect do |key,value| 
+			if value.is_a? Hash
+				"[#{key}]\n#{transform(value)}\n"
+			else
+				"#{key} = #{transform(value)}"
+			end
+		end .join "\n"
+	else
+		jsonize(obj)
+	end
+end
+
+puts transform(JSON.parse(STDIN.read))

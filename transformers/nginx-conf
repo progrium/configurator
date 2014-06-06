@@ -1,0 +1,119 @@
+#!/usr/bin/ruby
+require "rubygems"
+require "json"
+
+$allowed_contexts = {
+	"main" 		=> ["http", "events"],
+	"http" 		=> ["types", "server", "map", "upstream"],
+	"server" 	=> ["location", "types", "if"],
+	"location" 	=> ["limit_except", "location", "types", "if"]
+}
+$bare_contexts = ["http", "events", "types", "server"]
+$named_param_directives = [
+	"listen", 
+	"server", 
+	"open_file_cache", 
+	"resolver", 
+	"access_log", 
+	"open_log_file_cache", 
+	"proxy_cache_path",
+	"health_check",
+	"sticky",
+	"queue"
+]
+$_context_stack = ["main"]
+
+def compound(obj, &block)
+	# for objects of compound directives/values
+	obj.collect(&block).join "\n"
+end
+
+def is_context(name)
+	($allowed_contexts[$_context_stack.last] || {}).include? name
+end
+
+def context(directive, body)
+	if body.is_a? Array and body.first.is_a? Hash
+		compound(body) {|body| context(directive, body) }
+	else
+		$_context_stack.push directive.split(" ").first
+		c = ["#{directive} {",
+		 		transform(body, false).gsub(/^/, "\t"),
+		 	 "}"
+		].join "\n"
+		$_context_stack.pop
+		c 
+	end
+end
+
+def optional_named_parameters(obj)
+	# for directives with named params or keywords,
+	# ie: server 127.0.0.1:8000 weight=5 max_fails=3;
+	return "" if obj.nil?
+	" " + obj.collect{|k,v|
+		if [true, nil].include? v
+			k
+		else
+			"#{k}=#{v}"
+		end
+	}.join(' ')
+end
+
+def directive(name, obj)
+	if is_context name
+		if $bare_contexts.include? name
+			context(name, obj)			
+		else
+			if obj.is_a? Array
+				compound(obj) {|arg_and_body| context("#{name} #{arg_and_body.first}", arg_and_body.last) }
+			elsif obj.is_a? Hash
+				compound(obj) {|arg, body| context("#{name} #{arg}", body) }
+			else
+				raise "unexpected value for location context"
+			end
+		end
+	elsif $named_param_directives.include? name
+		if obj.is_a? Hash
+			compound(obj) {|arg, params| "#{name} #{arg}#{optional_named_parameters(params)};" }
+		elsif obj.is_a? Array
+			compound(obj) {|arg| "#{name} #{arg};" }
+		else
+			raise "unexpected value for directive #{name}"
+		end
+	elsif obj.is_a? Hash
+		if obj.has_key? "$file"
+			"# #{name} -- Unexpanded $file: #{obj["$file"]}"
+		elsif obj.has_key? "$value"
+			"# #{name} -- Unexpanded $value: #{obj["$value"]}"
+		else
+			compound(obj) {|first, rest| "#{name} #{first} #{transform(rest)};" }
+		end
+	else
+		"#{name} #{transform(obj)};"
+	end
+end
+
+def transform(obj, value=true)
+	case obj
+	when Array
+		if value
+			obj.join " "
+		else
+			compound(obj) {|e| directive e[0], e[1] }
+		end
+	when Hash
+		compound(obj) {|k,v| directive k, v }
+	when Fixnum, Float
+		transform(obj.to_s)
+	when TrueClass
+		"on"
+	when FalseClass
+		"off"
+	when NilClass
+		""
+	when String
+		obj
+	end
+end
+
+puts transform(JSON.parse(STDIN.read))
