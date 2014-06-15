@@ -11,6 +11,7 @@ main() {
 			echo "$transformer: PASS"
 		else
 			echo "$transformer: FAIL"
+			echo "$output" | diff "$tests_dir/$transformer.expected" -
 			exit 2
 		fi
 	done

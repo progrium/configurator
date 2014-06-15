@@ -20,17 +20,17 @@
       "appservers": {
         "zone": {"$value": "/nginx/foo/bar"},
         "server": {
-          "appserv1.example.com": null,
-          "appserv2.example.com:8080": {
+          "appserv1.xip.io": null,
+          "appserv2.xip.io:8080": {
             "weight": "5"
           },
           "192.0.2.1": {
             "max_fails": 3
           },
-          "reserve1.example.com:8080": {
+          "reserve1.xip.io:8080": {
             "backup": true
           },
-          "reserve2.example.com:8080": {
+          "reserve2.xip.io:8080": {
             "backup": true
           }
         }

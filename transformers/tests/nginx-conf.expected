@@ -15,11 +15,11 @@ http {
 	}
 	upstream appservers {
 		# zone -- Unexpanded $value: /nginx/foo/bar
-		server appserv1.example.com;
-		server appserv2.example.com:8080 weight=5;
+		server appserv1.xip.io;
+		server appserv2.xip.io:8080 weight=5;
 		server 192.0.2.1 max_fails=3;
-		server reserve1.example.com:8080 backup;
-		server reserve2.example.com:8080 backup;
+		server reserve1.xip.io:8080 backup;
+		server reserve2.xip.io:8080 backup;
 	}
 	server {
 		server_name foobar.com;
