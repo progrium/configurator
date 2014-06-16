@@ -9,7 +9,7 @@ main() {
 			curl -s "$CONSUL/v1/kv/$key" | jq -r .[]
 			;;
 		get)
-			curl -s "$CONSUL/v1/kv/$key" | jq -r .[].Value | base64 -d | sed 's/$/\n/'
+			curl -s "$CONSUL/v1/kv/$key" | jq -r .[].Value | base64 -d | sed 's/\Z/\n/'
 			;;
 		set)
 			curl -s -X PUT -d "$3" "$CONSUL/v1/kv/$key" > /dev/null

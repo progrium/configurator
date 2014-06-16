@@ -1,9 +1,24 @@
-{"$if": {"!eq": {"$environ": "FOOBAR"}, "_": "foobar"},
- "then": "Blah",
- "else": "Other"}
+{
+	"$for": "@service", 
+	"in": {"$services": "*"},
+	"loop": ["upstream", {"@service": null}],
+	"else": ["noupstream"]
+}
+
+{
+	"$if": {
+		"$eq": [
+			{"$environ": "FOOBAR"}, 
+			"foobar"
+		]
+	},
+ 	"then": "Blah",
+ 	"else": "Other"
+ }
 {"$environ": "FOOBAR"}
-{"$service": "myapp", "_": "Port"}
+{"$service": "myapp", ".": "Port"}
 {"$ref": "#foo/bar"}
+{"$set": ["@foo", "value"]}
 
 
 remote: config store change notification (config or reference value)
@@ -26,3 +41,7 @@ any change should go through render before apply
 keep around last rendered
 
 
+TODO
+ * macro system
+ * abstract config store
+ * use tigertonic?

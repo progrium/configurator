@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"errors"
+	"log"
+	"net/url"
 	"sync"
 
 	"github.com/armon/consul-kv"
@@ -13,30 +15,67 @@ type ConsulStore struct {
 	client    *consulkv.Client
 	prefix    string
 	lastIndex uint64
+	watching  map[string]struct{}
 }
 
-func NewConsulStore(prefix string) (*ConsulStore, error) {
+func NewConsulStore(uri *url.URL) (*ConsulStore, error) {
 	client, err := consulkv.NewClient(consulkv.DefaultConfig())
 	if err != nil {
 		return nil, err
 	}
 	return &ConsulStore{
-		client: client,
-		prefix: prefix,
+		client:   client,
+		prefix:   uri.Path,
+		watching: make(map[string]struct{}),
 	}, nil
+}
+
+func (s *ConsulStore) Watch(config *Config, key string) {
+	s.Lock()
+	_, watching := s.watching[key]
+	if watching {
+		s.Unlock()
+		return
+	}
+	s.watching[key] = struct{}{}
+	index := s.lastIndex
+	s.Unlock()
+	for {
+		_, pair, err := s.client.WatchGet(key, index)
+		if err != nil {
+			log.Println("consul:", err)
+		}
+		if pair.ModifyIndex == index {
+			// watch was released after timeout
+			continue
+		}
+		go func() {
+			log.Println("consul: update triggered")
+			err := config.Update()
+			if err != nil {
+				log.Println("consul: update failed, ignoring")
+				return
+			}
+			log.Println("consul: update successful")
+		}()
+		index = pair.ModifyIndex
+	}
 }
 
 func (s *ConsulStore) Pull(config *Config) (bool, error) {
 	s.Lock()
 	defer s.Unlock()
+	configPath := s.prefix + "/config"
+	go s.Watch(config, configPath) // actually runs on exit due to lock
 	currentDump := config.Dump()
-	meta, pair, err := s.client.Get(s.prefix + "/config")
+	meta, pair, err := s.client.Get(configPath)
 	if err != nil {
 		return false, err
 	}
 	if pair != nil {
 		err := config.Load(pair.Value)
 		if err != nil {
+			log.Println("Invalid JSON from config store value", configPath)
 			return false, err
 		}
 		s.lastIndex = meta.ModifyIndex

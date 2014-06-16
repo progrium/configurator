@@ -90,7 +90,7 @@ func (c *Config) Mutate(mutation func(*JsonTree) bool) error {
 	c.Lock()
 	defer c.Unlock()
 
-	cc := c.copy()
+	cc := c.Copy()
 	_, err := cc.store.Pull(cc)
 	if err != nil {
 		return err
@@ -120,7 +120,7 @@ func (c *Config) Update() error {
 	c.Lock()
 	defer c.Unlock()
 
-	cc := c.copy()
+	cc := c.Copy()
 	updated, err := cc.store.Pull(cc)
 	if err != nil {
 		return err
@@ -150,7 +150,7 @@ func (c *Config) LastRender() []byte {
 	return c.lastValidBytes
 }
 
-func (c *Config) copy() *Config {
+func (c *Config) Copy() *Config {
 	return &Config{
 		tree:         c.tree.Copy(),
 		target:       c.target,
@@ -174,13 +174,11 @@ func (c *Config) renderAndValidate() ([]byte, error) {
 	if err := cmd.Run(); err != nil {
 		return nil, &ExecError{"transform", err, output.String(), input.String()}
 	}
-
-	if len(c.validateCmd) > 0 {
+	if c.validateCmd != "" {
 		if err := c.execValidate(output.Bytes()); err != nil {
 			return nil, err
 		}
 	}
-
 	c.lastValidBytes = output.Bytes()
 	return output.Bytes(), nil
 }
@@ -208,13 +206,11 @@ func (c *Config) applyAndReload(configBytes []byte) error {
 	if err := ioutil.WriteFile(c.target, configBytes, 0644); err != nil {
 		return err
 	}
-
-	if len(c.reloadCmd) > 0 {
+	if c.reloadCmd != "" {
 		if err := c.execReload(); err != nil {
 			return err
 		}
 	}
-
 	c.lastValidBytes = configBytes
 	return nil
 }
