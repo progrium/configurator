@@ -81,13 +81,7 @@ def directive(name, obj)
 			raise "unexpected value for directive #{name}"
 		end
 	elsif obj.is_a? Hash
-		if obj.has_key? "$file"
-			"# #{name} -- Unexpanded $file: #{obj["$file"]}"
-		elsif obj.has_key? "$value"
-			"# #{name} -- Unexpanded $value: #{obj["$value"]}"
-		else
-			compound(obj) {|first, rest| "#{name} #{first} #{transform(rest)};" }
-		end
+		compound(obj) {|first, rest| "#{name} #{first} #{transform(rest)};" }
 	else
 		"#{name} #{transform(obj)};"
 	end

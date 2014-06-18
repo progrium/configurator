@@ -1,5 +1,5 @@
 {
-  "ssl_certificate": {"$file": "/nginx/files/foobar"},
+  "ssl_certificate": "/nginx/files/foobar",
   "user": ["nobody", "nogroup"],
   "events": {
     "worker_connections": 1024,
@@ -18,7 +18,6 @@
         ]
       },
       "appservers": {
-        "zone": {"$value": "/nginx/foo/bar"},
         "server": {
           "appserv1.xip.io": null,
           "appserv2.xip.io:8080": {

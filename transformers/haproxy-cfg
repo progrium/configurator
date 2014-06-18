@@ -1,0 +1,103 @@
+#!/usr/bin/ruby
+require "rubygems"
+require "json"
+
+$proxy_keywords = ["acl", "appsession", "backlog", "balance", "bind", "bind-process", "block", "capture", 
+	"clitimeout", "contimeout", "cookie", "default-server", "default_backend", "description", "disabled", 
+	"dispatch", "enabled", "errorfile", "errorloc", "errorloc302", "errorloc303", "force-persist", "fullconn", 
+	"grace", "hash-type", "http-check", "http-request", "id", "ignore-persist", "log", "maxconn", "mode", 
+	"monitor fail", "monitor-net", "monitor-uri", "option", "persist rdp-cookie", "rate-limit sessions", 
+	"redirect", "redisp", "redispatch", "reqadd", "reqallow", "reqdel", "reqdeny", "reqiallow", "reqidel", 
+	"reqideny", "reqipass", "reqirep", "reqisetbe", "reqitarpit", "reqpass", "reqrep", "reqsetbe", "reqtarpit", 
+	"retries", "rspadd", "rspdel", "rspdeny", "rspidel", "rspideny", "rspirep", "rsprep", "server", "source", 
+	"srvtimeout", "stats", "stick", "stick-table", "tcp-request", "timeout", "transparent", "use_backend"]
+$keyword_sections = {
+	"global" 	=> ["chroot", "daemon", "gid", "group", "log", "log-send-hostname", "nbproc", "pidfile", 
+		"uid", "ulimit-n", "user", "stats", "node", "description", "maxconn", "maxpipes", "noepoll", "nokqueue", 
+		"nopoll", "nosepoll", "nosplice", "spread-checks", "tune.bufsize", "tune.chksize", "tune.maxaccept", 
+		"tune.maxpollevents", "tune.maxrewrite", "tune.rcvbuf.client", "tune.rcvbuf.server", "tune.sndbuf.client", 
+		"tune.sndbuf.server", "debug", "quiet"],
+	"userlist"	=> ["group", "user"],
+	"defaults" 	=> $proxy_keywords,
+	"listen" 	=> $proxy_keywords,
+	"frontend" 	=> $proxy_keywords,
+	"backend" 	=> $proxy_keywords
+}
+$named_sections = ["listen", "frontend", "backend"] # intentionally not including "defaults"
+
+def strip_extra_spaces(str)
+	str.split("\n").collect{|s| s.gsub(/\s+/, " ").strip }.join "\n"
+end
+
+def arg(obj)
+	case obj
+	when Array
+		obj.collect{|a| arg(a) }.join " "
+	when Hash
+		obj.collect{|k,v| [k, arg(v)].join(" ") }.join " "
+	when TrueClass, NilClass
+		""
+	when Fixnum, Float
+		obj.to_s
+	when String
+		obj
+	else
+		raise "unexpected value for arg #{obj}"
+	end
+end
+
+def keyword(name, args)
+	if args.is_a? Hash
+		args.collect do |k,v|
+			if v == false
+				nil # in other words, drop the whole keyword line (using compact)
+			else
+				keyword("#{name} #{k}", v)
+			end
+		end .compact.join "\n"
+	elsif args.is_a?(Array) and args.first.is_a?(Array)
+		args.collect do |line| 
+			arg([name] + line)
+		end .join "\n"
+	else
+		"#{name} #{arg(args)}"
+	end
+end
+
+def section(name, body)
+	section_keyword = name.split(" ").first
+	raise "unexpected section #{section_keyword}" \
+		unless $keyword_sections.keys.include? section_keyword
+	if $named_sections.include? name
+		if body.is_a? Hash
+			body.collect{|k,v| section("#{name} #{k}", v) }.join
+		else
+			raise "named section #{name} expecting object value"
+		end
+	else
+		lines = case body
+		when Hash
+			body.collect do |kw, args|
+				raise "keyword not allowed in #{section_keyword}: #{kw}" \
+					unless $keyword_sections[section_keyword].include? kw
+				strip_extra_spaces(keyword(kw, args))
+			end
+		when Array
+			body.collect do |line|
+				raise "keyword not allowed in #{section_keyword}: #{line.first}" \
+					unless $keyword_sections[section_keyword].include? line.first
+				strip_extra_spaces(args(line))
+			end
+		end .join "\n"
+		["#{name}", lines.gsub(/^/, "  "), "\n"].join "\n"
+	end
+end
+
+def transform(obj)
+	raise "non object as root" unless obj.is_a? Hash
+	obj.collect do |name, body|
+		section(name, body)
+	end .join
+end
+
+puts transform(JSON.parse(STDIN.read))

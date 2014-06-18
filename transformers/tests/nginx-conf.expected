@@ -1,4 +1,4 @@
-# ssl_certificate -- Unexpanded $file: /nginx/files/foobar
+ssl_certificate /nginx/files/foobar;
 user nobody nogroup;
 events {
 	worker_connections 1024;
@@ -14,7 +14,6 @@ http {
 		server foobar.com:8080;
 	}
 	upstream appservers {
-		# zone -- Unexpanded $value: /nginx/foo/bar
 		server appserv1.xip.io;
 		server appserv2.xip.io:8080 weight=5;
 		server 192.0.2.1 max_fails=3;

@@ -1,0 +1,55 @@
+global
+  daemon
+  chroot /var/lib/haproxy
+  user haproxy
+  group haproxy
+  maxconn 4096
+  log logs.papertrailapp.com:45187 local0
+  log logs.papertrailapp.com:45187 local1 notice error
+
+defaults
+  log global
+  mode http
+  option httplog
+  option dontlognull
+  timeout connect 5000
+  timeout client 50s
+  timeout server 1m
+  errorfile 400 /etc/haproxy/errors/400.http
+  errorfile 403 /etc/haproxy/errors/403.http
+
+listen stats
+  bind 0.0.0.0:8080
+  mode http
+  stats enable
+  stats uri /
+  stats refresh 5s
+
+frontend all
+  bind 192.168.0.5:80
+  bind *:8040
+  default_backend appin
+  mode http
+  acl is_websocket hdr(Upgrade) -i WebSocket
+  use_backend websocket if is_websocket
+  option forwardfor except 127.0.0.1
+  option httplog clf
+
+backend appin
+  balance url_param userid
+  timeout queue 5000
+  timeout server 50000
+  option forwardfor header X-Client
+  server socket0 localhost:6000 maxconn 500 check
+  server socket1 localhost:6001 maxconn 500 check
+
+backend websocket
+  balance leastconn
+  timeout queue 5000
+  timeout server 86400000
+  option httpchk GET /ws-healthcheck HTTP/1.0
+  server socket10 localhost:6010 maxconn 10000 check inter
+  server socket11 localhost:6011 maxconn 10000 check backup
+  server socket12 localhost:6012 maxconn 10000 check inter 5000
+  server socket13 localhost:6013 maxconn 10000 check source 192.168.0.5:80 usesrc client
+  server socket14 localhost:6014 maxconn 10000 check source 192.168.0.5:80 usesrc hdr_ip(x-forwarded-for,-1)
