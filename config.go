@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"sync"
@@ -40,6 +41,7 @@ type Config struct {
 	sync.Mutex
 	store          *ConsulStore
 	tree           *JsonTree
+	preprocessor   *Preprocessor
 	target         string
 	transformCmd   string
 	validateCmd    string
@@ -60,14 +62,17 @@ func NewConfig(store *ConsulStore, target, transform, reload, validate string) (
 	if err != nil {
 		return nil, err
 	}
-	return &Config{
+	config := &Config{
 		store:        store,
+		preprocessor: new(Preprocessor),
 		tree:         new(JsonTree),
 		target:       target,
 		transformCmd: transform,
 		reloadCmd:    reload,
 		validateCmd:  validate,
-	}, nil
+	}
+	loadBuiltinMacros(config.preprocessor, store, config)
+	return config, nil
 }
 
 func (c *Config) Load(b []byte) error {
@@ -91,15 +96,14 @@ func (c *Config) Mutate(mutation func(*JsonTree) bool) error {
 	defer c.Unlock()
 
 	cc := c.Copy()
-	_, err := cc.store.Pull(cc)
-	if err != nil {
+	if err := cc.store.Pull(cc); err != nil {
 		return err
 	}
 	if err := cc.Validate(); err != nil {
 		return err
 	}
 
-	err = cc.store.Commit(cc, func() error {
+	err := cc.store.Commit(cc, func() error {
 		if !mutation(cc.tree) {
 			return errors.New("mutation failed")
 		}
@@ -121,12 +125,8 @@ func (c *Config) Update() error {
 	defer c.Unlock()
 
 	cc := c.Copy()
-	updated, err := cc.store.Pull(cc)
-	if err != nil {
+	if err := cc.store.Pull(cc); err != nil {
 		return err
-	}
-	if !updated {
-		return nil
 	}
 	output, err := cc.renderAndValidate()
 	if err != nil {
@@ -141,6 +141,16 @@ func (c *Config) Update() error {
 	return nil
 }
 
+func (c *Config) TriggerUpdate(from string) {
+	log.Println("config: update triggered by", from)
+	err := c.Update()
+	if err != nil {
+		log.Println("config: update failed, ignoring")
+		return
+	}
+	log.Println("config: update successful")
+}
+
 func (c *Config) Validate() error {
 	_, err := c.renderAndValidate()
 	return err
@@ -153,6 +163,7 @@ func (c *Config) LastRender() []byte {
 func (c *Config) Copy() *Config {
 	return &Config{
 		tree:         c.tree.Copy(),
+		preprocessor: c.preprocessor,
 		target:       c.target,
 		transformCmd: c.transformCmd,
 		reloadCmd:    c.reloadCmd,
@@ -167,7 +178,7 @@ func (c *Config) replaceTree(config *Config) {
 
 func (c *Config) renderAndValidate() ([]byte, error) {
 	var output bytes.Buffer
-	input := bytes.NewBuffer(c.store.Preprocess(c.tree).Dump())
+	input := bytes.NewBuffer(c.preprocessor.Process(c.tree).Dump())
 	cmd := execCmd(c.transformCmd)
 	cmd.Stdin = input
 	cmd.Stdout = &output
@@ -189,7 +200,6 @@ func (c *Config) execValidate(configBytes []byte) error {
 	if err != nil {
 		return err
 	}
-	defer os.Remove(file.Name())
 	file.Write(configBytes)
 	file.Close()
 	cmd := execCmd(c.validateCmd)
@@ -199,6 +209,7 @@ func (c *Config) execValidate(configBytes []byte) error {
 	if err := cmd.Run(); err != nil {
 		return &ExecError{"validation", err, output.String(), string(configBytes)}
 	}
+	os.Remove(file.Name())
 	return nil
 }
 

@@ -29,12 +29,6 @@ any change should be validated before commit (going out) or apply (coming in)
 incoming(remote mutation): copy, validate(change, render), replace, apply
 outgoing(local mutation): copy, pull(copy, change, render), validate, commit(write, [pull, validate, write, ...])
 
-for {
-	select {
-	case <-foo:
-		go trigger Update
-	}
-}
 
 
 any change should go through render before apply
@@ -42,6 +36,11 @@ keep around last rendered
 
 
 TODO
- * macro system
+ * full macro list
+ * macro http interface
+ * status of last validate for each watched key
  * abstract config store
  * use tigertonic?
+ * encryption?
+ * virtual grouping
+ * layers

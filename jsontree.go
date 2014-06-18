@@ -14,8 +14,6 @@ type JsonTree struct {
 	root interface{}
 }
 
-var Directives = []string{"$file", "$value"}
-
 func (t *JsonTree) Load(b []byte) error {
 	t.Lock()
 	defer t.Unlock()
@@ -200,21 +198,4 @@ func (t *JsonTree) Paths() []string {
 	}
 	walk("/")
 	return paths
-}
-
-func (t *JsonTree) Directives() map[string]map[string]string {
-	directives := make(map[string]map[string]string)
-	for _, path := range t.Paths() {
-		for _, directive := range Directives {
-			if strings.HasSuffix(path, directive) {
-				obj := t.Get(filepath.Dir(path)).(map[string]interface{})
-				obj2 := make(map[string]string)
-				for k, v := range obj {
-					obj2[k] = v.(string)
-				}
-				directives[filepath.Dir(path)] = obj2
-			}
-		}
-	}
-	return directives
 }
