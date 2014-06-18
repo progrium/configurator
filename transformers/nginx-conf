@@ -72,13 +72,11 @@ def directive(name, obj)
 				raise "unexpected value for location context"
 			end
 		end
-	elsif $named_param_directives.include? name
+	elsif $named_param_directives.include?(name) and [Array, Hash].include?(obj.class)
 		if obj.is_a? Hash
 			compound(obj) {|arg, params| "#{name} #{arg}#{optional_named_parameters(params)};" }
 		elsif obj.is_a? Array
 			compound(obj) {|arg| "#{name} #{arg};" }
-		else
-			raise "unexpected value for directive #{name}"
 		end
 	elsif obj.is_a? Hash
 		compound(obj) {|first, rest| "#{name} #{first} #{transform(rest)};" }
