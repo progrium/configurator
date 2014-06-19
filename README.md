@@ -39,7 +39,6 @@ TODO
  * full macro list
  * macro http interface
  * status of last validate for each watched key
- * abstract config store
  * use tigertonic?
  * encryption?
  * virtual grouping

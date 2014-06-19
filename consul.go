@@ -17,7 +17,7 @@ type ConsulStore struct {
 	watching    map[string]struct{}
 }
 
-func NewConsulStore(uri *url.URL) (*ConsulStore, error) {
+func NewConsulStore(uri *url.URL) (ConfigStore, error) {
 	client, err := consulkv.NewClient(consulkv.DefaultConfig())
 	if err != nil {
 		return nil, err
@@ -85,7 +85,7 @@ func (s *ConsulStore) Pull(config *Config) error {
 	if pair != nil {
 		err := config.Load(pair.Value)
 		if err != nil {
-			log.Println("Invalid JSON from config store value", configPath)
+			log.Println("consul: Invalid JSON from config store value", configPath)
 			return err
 		}
 		s.configIndex = meta.ModifyIndex
@@ -115,5 +115,5 @@ func (s *ConsulStore) Commit(config *Config, operation func() error) error {
 			return err
 		}
 	}
-	return errors.New("unable to commit after 3 tries")
+	return errors.New("consul: unable to commit after 3 tries")
 }

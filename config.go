@@ -39,7 +39,7 @@ func execCmd(cmdline string) *exec.Cmd {
 
 type Config struct {
 	sync.Mutex
-	store          *ConsulStore
+	store          ConfigStore
 	tree           *JsonTree
 	preprocessor   *Preprocessor
 	target         string
@@ -49,7 +49,7 @@ type Config struct {
 	lastValidBytes []byte
 }
 
-func NewConfig(store *ConsulStore, target, transform, reload, validate string) (*Config, error) {
+func NewConfig(store ConfigStore, target, transform, reload, validate string) (*Config, error) {
 	_, err := shlex.Split(transform)
 	if err != nil {
 		return nil, err

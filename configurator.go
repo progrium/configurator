@@ -13,7 +13,7 @@ import (
 
 const Version = "0.0.1"
 
-var port = flag.String("p", "8881", "port to listen on")
+var port = flag.String("p", "9000", "port to listen on")
 var checkCmd = flag.String("c", "", "config check command. FILE set in env")
 var reloadCmd = flag.String("r", "", "reload command")
 var showVersion = flag.Bool("v", false, "prints current configurator version")
@@ -64,8 +64,9 @@ func main() {
 
 	uri, err := url.Parse(flag.Arg(0))
 	assert(err)
-	factory := map[string]func(*url.URL) (*ConsulStore, error){
+	factory := map[string]func(*url.URL) (ConfigStore, error){
 		"consul": NewConsulStore,
+		"file":   NewFileStore,
 	}[uri.Scheme]
 	if factory == nil {
 		log.Fatal("Unrecognized config store backend: ", uri.Scheme)

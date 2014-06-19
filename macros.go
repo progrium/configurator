@@ -1,6 +1,6 @@
 package main
 
-func loadBuiltinMacros(preprocessor *Preprocessor, store *ConsulStore, config *Config) {
+func loadBuiltinMacros(preprocessor *Preprocessor, store ConfigStore, config *Config) {
 	preprocessor.Register("$value", func(input macroinput) interface{} {
 		path := input["$value"].(string)
 		go store.WatchToUpdate(config, path)

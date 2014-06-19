@@ -2,7 +2,7 @@
 set -eo pipefail
 
 readonly NAME="configurator"
-readonly VERSION="$(cat release/VERSION)"
+readonly VERSION="$(cat release/version)"
 readonly RELEASES_ENDPOINT="https://api.github.com/repos/progrium/$NAME/releases"
 readonly ASSETS_ENDPOINT="https://uploads.github.com/repos/progrium/$NAME/releases/%s/assets"
 
