@@ -1,6 +1,6 @@
 NAME=configurator
 HARDWARE=$(shell uname -m)
-VERSION=0.0.1
+VERSION=0.0.2
 
 release:
 	rm -rf release
