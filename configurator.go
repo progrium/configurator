@@ -11,9 +11,12 @@ import (
 	"os"
 )
 
+const Version = "0.0.1"
+
 var port = flag.String("p", "8881", "port to listen on")
 var checkCmd = flag.String("c", "", "config check command. FILE set in env")
 var reloadCmd = flag.String("r", "", "reload command")
+var showVersion = flag.Bool("v", false, "prints current configurator version")
 
 func assert(err error) {
 	if err != nil {
@@ -50,6 +53,10 @@ func init() {
 
 func main() {
 	flag.Parse()
+	if *showVersion {
+		fmt.Println(Version)
+		os.Exit(0)
+	}
 	if flag.NArg() < 3 {
 		flag.Usage()
 		os.Exit(64)
