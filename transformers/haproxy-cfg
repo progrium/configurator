@@ -35,7 +35,7 @@ def arg(obj)
 		obj.collect{|a| arg(a) }.join " "
 	when Hash
 		obj.collect{|k,v| [k, arg(v)].join(" ") }.join " "
-	when TrueClass, NilClass
+	when TrueClass, NilClass, FalseClass
 		""
 	when Fixnum, Float
 		obj.to_s
@@ -50,7 +50,7 @@ def keyword(name, args)
 	if args.is_a? Hash
 		args.collect do |k,v|
 			if v == false
-				nil # in other words, drop the whole keyword line (using compact)
+				keyword("no #{name} #{k}", v)
 			else
 				keyword("#{name} #{k}", v)
 			end

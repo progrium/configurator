@@ -15,7 +15,8 @@
     "mode": "http",
     "option": {
       "httplog": true,
-      "dontlognull": true
+      "dontlognull": true,
+      "http-tunnel": true
     },
     "timeout": {
       "connect": 5000,
@@ -64,7 +65,8 @@
         "server": 50000
       },
       "option": {
-        "forwardfor": ["header", "X-Client"]
+        "forwardfor": ["header", "X-Client"],
+        "http-tunnel": false
       },
       "server": {
         "socket0": ["localhost:6000", "maxconn", 500, "check"],
