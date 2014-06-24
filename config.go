@@ -37,8 +37,13 @@ func execCmd(cmdline string) *exec.Cmd {
 	}
 }
 
+func cmdRunner(e *exec.Cmd) error {
+	return e.Run()
+}
+
 type Config struct {
 	sync.Mutex
+	cmdRunner      func(*exec.Cmd) error
 	store          ConfigStore
 	tree           *JsonTree
 	preprocessor   *Preprocessor
@@ -63,6 +68,7 @@ func NewConfig(store ConfigStore, target, transform, reload, validate string) (*
 		return nil, err
 	}
 	config := &Config{
+		cmdRunner:    cmdRunner,
 		store:        store,
 		preprocessor: new(Preprocessor),
 		tree:         new(JsonTree),
@@ -182,7 +188,7 @@ func (c *Config) renderAndValidate() ([]byte, error) {
 	cmd := execCmd(c.transformCmd)
 	cmd.Stdin = input
 	cmd.Stdout = &output
-	if err := cmd.Run(); err != nil {
+	if err := c.cmdRunner(cmd); err != nil {
 		return nil, &ExecError{"transform", err, output.String(), input.String()}
 	}
 	if c.validateCmd != "" {
@@ -206,7 +212,7 @@ func (c *Config) execValidate(configBytes []byte) error {
 	cmd.Env = append(cmd.Env, "FILE="+file.Name())
 	cmd.Stdout = &output
 	cmd.Stderr = &output
-	if err := cmd.Run(); err != nil {
+	if err := c.cmdRunner(cmd); err != nil {
 		return &ExecError{"validation", err, output.String(), string(configBytes)}
 	}
 	os.Remove(file.Name())
@@ -231,7 +237,7 @@ func (c *Config) execReload() error {
 	cmd := execCmd(c.reloadCmd)
 	cmd.Stdout = &output
 	cmd.Stderr = &output
-	if err := cmd.Run(); err != nil {
+	if err := c.cmdRunner(cmd); err != nil {
 		return &ExecError{"reload", err, output.String(), ""}
 	}
 	return nil
