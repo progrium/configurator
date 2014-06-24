@@ -32,6 +32,8 @@ func TestPreprocessor(t *testing.T) {
 		t.Fatalf("failed to make config: %v", err)
 	}
 
+	config.execCmd = testCmd
+
 	loadBuiltinMacros(p, store, config)
 
 	preprocess := &JsonTree{}
