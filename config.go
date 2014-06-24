@@ -28,9 +28,7 @@ type Executor interface {
 	Run() error
 	GetEnv() []string
 	SetEnv([]string)
-	SetStdin(io.Reader)
-	SetStdout(io.Writer)
-	SetStderr(io.Writer)
+	SetStdio(in io.Reader, out io.Writer, err io.Writer)
 }
 
 type OsExecutor struct {
@@ -49,16 +47,16 @@ func (o *OsExecutor) SetEnv(s []string) {
 	o.cmd.Env = s
 }
 
-func (o *OsExecutor) SetStdin(r io.Reader) {
-	o.cmd.Stdin = r
-}
-
-func (o *OsExecutor) SetStdout(w io.Writer) {
-	o.cmd.Stdout = w
-}
-
-func (o *OsExecutor) SetStderr(w io.Writer) {
-	o.cmd.Stderr = w
+func (o *OsExecutor) SetStdio(in io.Reader, out io.Writer, err io.Writer) {
+	if in != nil {
+		o.cmd.Stdin = in
+	}
+	if out != nil {
+		o.cmd.Stdout = out
+	}
+	if err != nil {
+		o.cmd.Stderr = err
+	}
 }
 
 func execCmd(cmdline string) Executor {
@@ -220,8 +218,7 @@ func (c *Config) renderAndValidate() ([]byte, error) {
 	var output bytes.Buffer
 	input := bytes.NewBuffer(c.preprocessor.Process(c.tree).Dump())
 	cmd := c.execCmd(c.transformCmd)
-	cmd.SetStdin(input)
-	cmd.SetStdout(&output)
+	cmd.SetStdio(input, &output, nil)
 	if err := cmd.Run(); err != nil {
 		return nil, &ExecError{"transform", err, output.String(), input.String()}
 	}
@@ -244,8 +241,7 @@ func (c *Config) execValidate(configBytes []byte) error {
 	file.Close()
 	cmd := c.execCmd(c.validateCmd)
 	cmd.SetEnv(append(cmd.GetEnv(), "FILE="+file.Name()))
-	cmd.SetStdout(&output)
-	cmd.SetStderr(&output)
+	cmd.SetStdio(nil, &output, &output)
 	if err := cmd.Run(); err != nil {
 		return &ExecError{"validation", err, output.String(), string(configBytes)}
 	}
@@ -269,8 +265,7 @@ func (c *Config) applyAndReload(configBytes []byte) error {
 func (c *Config) execReload() error {
 	var output bytes.Buffer
 	cmd := c.execCmd(c.reloadCmd)
-	cmd.SetStdout(&output)
-	cmd.SetStderr(&output)
+	cmd.SetStdio(nil, &output, &output)
 	if err := cmd.Run(); err != nil {
 		return &ExecError{"reload", err, output.String(), ""}
 	}

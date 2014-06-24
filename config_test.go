@@ -15,13 +15,7 @@ func (d *DummyExecutor) GetEnv() []string {
 func (d *DummyExecutor) SetEnv(s []string) {
 }
 
-func (d *DummyExecutor) SetStdin(r io.Reader) {
-}
-
-func (d *DummyExecutor) SetStdout(w io.Writer) {
-}
-
-func (d *DummyExecutor) SetStderr(w io.Writer) {
+func (d *DummyExecutor) SetStdio(in io.Reader, out io.Writer, err io.Writer) {
 }
 
 func testCmd(cmdline string) Executor {
