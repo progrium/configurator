@@ -175,6 +175,7 @@ func (c *Config) Copy() *Config {
 		reloadCmd:    c.reloadCmd,
 		validateCmd:  c.validateCmd,
 		store:        c.store,
+		cmdRunner:    c.cmdRunner,
 	}
 }
 
