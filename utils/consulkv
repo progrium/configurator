@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CONSUL="localhost:8500"
+CONSUL="${CONSUL:-"localhost:8500"}"
 
 main() {
 	local key="$(echo "$2" | sed 's|^/||')"

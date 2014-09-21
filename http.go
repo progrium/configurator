@@ -51,7 +51,7 @@ func runHttp(config *Config) {
 		path := strings.TrimPrefix(req.RequestURI, "/v1/config")
 		handleMutateError := func(err error) {
 			if err != nil {
-				log.Println(err)
+				log.Println("mutate:", err)
 				w.WriteHeader(http.StatusBadRequest)
 				if e, ok := err.(*ExecError); ok {
 					io.WriteString(w, e.Output)

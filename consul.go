@@ -5,26 +5,31 @@ import (
 	"log"
 	"net/url"
 	"sync"
+	"time"
 
-	"github.com/armon/consul-kv"
+	"github.com/armon/consul-api"
 )
 
 type ConsulStore struct {
 	sync.Mutex
-	client      *consulkv.Client
+	client      *consulapi.Client
 	prefix      string
 	configIndex uint64
 	watching    map[string]struct{}
 }
 
 func NewConsulStore(uri *url.URL) (ConfigStore, error) {
-	client, err := consulkv.NewClient(consulkv.DefaultConfig())
+	config := consulapi.DefaultConfig()
+	if uri.Host != "" {
+		config.Address = uri.Host
+	}
+	client, err := consulapi.NewClient(config)
 	if err != nil {
 		return nil, err
 	}
 	return &ConsulStore{
 		client:   client,
-		prefix:   uri.Path,
+		prefix:   uri.Path[1:],
 		watching: make(map[string]struct{}),
 	}, nil
 }
@@ -32,7 +37,7 @@ func NewConsulStore(uri *url.URL) (ConfigStore, error) {
 func (s *ConsulStore) Get(key string) string {
 	s.Lock()
 	defer s.Unlock()
-	_, pair, err := s.client.Get(key)
+	pair, _, err := s.client.KV().Get(key, nil)
 	if err != nil {
 		log.Println("consul:", err)
 	}
@@ -53,7 +58,10 @@ func (s *ConsulStore) WatchToUpdate(config *Config, key string) {
 	var index uint64
 	s.Unlock()
 	for {
-		_, pair, err := s.client.WatchGet(key, index)
+		pair, _, err := s.client.KV().Get(key, &consulapi.QueryOptions{
+			WaitTime:  time.Duration(10) * time.Minute,
+			WaitIndex: index,
+		})
 		if err != nil {
 			log.Println("consul:", err)
 			return
@@ -78,8 +86,9 @@ func (s *ConsulStore) Pull(config *Config) error {
 	defer s.Unlock()
 	configPath := s.prefix + "/config"
 	go s.WatchToUpdate(config, configPath) // actually runs on exit due to lock
-	meta, pair, err := s.client.Get(configPath)
+	pair, _, err := s.client.KV().Get(configPath, nil)
 	if err != nil {
+		log.Println("consul: pull:", err)
 		return err
 	}
 	if pair != nil {
@@ -88,7 +97,7 @@ func (s *ConsulStore) Pull(config *Config) error {
 			log.Println("consul: Invalid JSON from config store value", configPath)
 			return err
 		}
-		s.configIndex = meta.ModifyIndex
+		s.configIndex = pair.ModifyIndex
 	}
 	return nil
 }
@@ -103,9 +112,14 @@ func (s *ConsulStore) Commit(config *Config, operation func() error) error {
 			return err
 		}
 		s.Lock()
-		success, err = s.client.CAS(s.prefix+"/config", config.Dump(), 0, s.configIndex)
+		success, _, err = s.client.KV().CAS(&consulapi.KVPair{
+			Key:         s.prefix + "/config",
+			Value:       config.Dump(),
+			ModifyIndex: s.configIndex,
+		}, nil)
 		s.Unlock()
 		if err != nil {
+			log.Println("consul: commit:", err)
 			return err
 		}
 		if success {
