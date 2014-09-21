@@ -11,7 +11,7 @@ import (
 	"os"
 )
 
-const Version = "0.0.2"
+const Version = "0.0.3"
 
 var port = flag.String("p", "9000", "port to listen on")
 var checkCmd = flag.String("c", "", "config check command. FILE set in env")
